@@ -63,5 +63,3 @@ public sealed class WizardOptionCollector
         return new WizardOptions(cardRaw, date, note, null);
     }
 }
-
-public readonly record struct WizardOptions(string? CardRaw, DateOnly? Date, string? Note, string? Error);
