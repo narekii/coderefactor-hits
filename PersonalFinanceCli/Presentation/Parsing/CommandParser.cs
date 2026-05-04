@@ -1,7 +1,7 @@
 using PersonalFinanceCli.Domain.ValueObjects;
 using System.Globalization;
 using System.Text.RegularExpressions;
-using PersonalFinanceCli.Presentation.Parsing.DTOs;
+using PersonalFinanceCli.Presentation.Parsing.Commands;
 
 namespace PersonalFinanceCli.Presentation.Parsing;
 

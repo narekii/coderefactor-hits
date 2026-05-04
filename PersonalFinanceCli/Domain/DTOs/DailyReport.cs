@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using PersonalFinanceCli.Domain.Entities;
+﻿using PersonalFinanceCli.Domain.Entities;
 using PersonalFinanceCli.Domain.ValueObjects;
 
 namespace PersonalFinanceCli.Domain.DTOs;

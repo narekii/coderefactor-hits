@@ -1,6 +1,6 @@
 ﻿using PersonalFinanceCli.Domain.ValueObjects;
 
-namespace PersonalFinanceCli.Presentation.Parsing.DTOs
+namespace PersonalFinanceCli.Presentation.Parsing.Commands
 {
     public sealed record TransactionAddCommand(
         TransactionType Type,

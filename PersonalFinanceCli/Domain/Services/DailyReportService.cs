@@ -1,5 +1,4 @@
 using PersonalFinanceCli.Application.Repositories;
-using PersonalFinanceCli.Domain.Entities;
 using PersonalFinanceCli.Domain.ValueObjects;
 using PersonalFinanceCli.Domain.DTOs;
 

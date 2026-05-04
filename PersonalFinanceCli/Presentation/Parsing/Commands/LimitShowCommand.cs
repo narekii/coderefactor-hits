@@ -1,4 +1,4 @@
-﻿namespace PersonalFinanceCli.Presentation.Parsing.DTOs
+﻿namespace PersonalFinanceCli.Presentation.Parsing.Commands
 {
     public sealed record LimitShowCommand : ParsedCommand;
 }

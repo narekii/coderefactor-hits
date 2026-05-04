@@ -5,6 +5,7 @@ using PersonalFinanceCli.Domain.Services;
 using PersonalFinanceCli.Domain.ValueObjects;
 using PersonalFinanceCli.Infrastructure.Time;
 using PersonalFinanceCli.Presentation.Parsing;
+using PersonalFinanceCli.Presentation.Parsing.Commands;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
