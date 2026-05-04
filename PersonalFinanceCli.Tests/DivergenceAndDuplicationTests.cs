@@ -56,7 +56,7 @@ public sealed class DivergenceAndDuplicationTests
     {
         var parser = new PersonalFinanceCli.Presentation.Parsing.CommandParser();
         var cmd = parser.Parse("income add 1 Salary --date 2026-3-3 --note plain");
-        var parsed = Assert.IsType<PersonalFinanceCli.Presentation.Parsing.TransactionAddCommand>(cmd);
+        var parsed = Assert.IsType<PersonalFinanceCli.Presentation.Parsing.Commands.TransactionAddCommand>(cmd);
         Assert.Equal(new DateOnly(2026, 3, 3), parsed.Date);
         Assert.Equal("plain", parsed.Note);
 
