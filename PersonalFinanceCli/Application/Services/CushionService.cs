@@ -6,8 +6,8 @@ namespace PersonalFinanceCli.Application.Services;
 
 public sealed class CushionService
 {
-public const string TransferToCushionCategory="Transfer to cushion";
-public const string TransferFromIncomeCategory="Transfer from income";
+public const string TransferToCushionCategory = "Transfer to cushion";
+public const string TransferFromIncomeCategory = "Transfer from income";
 
 private readonly ICardRepository _cardRepository;
 
@@ -16,28 +16,33 @@ public CushionService(ICardRepository cardRepository)
         _cardRepository = cardRepository;
     }
 
-public Card? FindCushionByName()
+    public Card? GetCushion()
     {
-        var allCards = _cardRepository.GetAll();
-        return allCards.FirstOrDefault(card => card.Name == "Financial cushion");
+        var cards = _cardRepository.GetAll();
+
+        var byFlag = cards.FirstOrDefault(c => c.IsCushion);
+        if (byFlag != null) return byFlag;
+
+        var exact = cards.FirstOrDefault(c => c.Name.Equals("Financial cushion", StringComparison.OrdinalIgnoreCase));
+        if (exact != null) return exact;
+
+        return cards.FirstOrDefault(c => c.Name.Contains("cushion", StringComparison.OrdinalIgnoreCase));
     }
 
-public Card? FindCushionByContains()
+    public Card CreateCushion(Currency currency)
     {
-        var allCards = _cardRepository.GetAll();
-        return allCards.FirstOrDefault(card => card.Name.Contains("cushion", StringComparison.OrdinalIgnoreCase));
-    }
-
-public Card CreateCushion(Currency currency)
-    {
-        var existingCushion = FindCushionByName();
-        if (existingCushion!=null)
+        var existingCushion = GetCushion();
+        if (existingCushion != null)
         {
             return existingCushion;
         }
         return _cardRepository.Add(new Card
         {
-            Name = "Financial cushion", Currency=currency, InitialBalance=0m, IsDefault=false, IsCushion=true
+            Name = "Financial cushion",
+            Currency = currency,
+            InitialBalance = 0m,
+            IsDefault = false,
+            IsCushion = true
         }
         );
     }
@@ -45,7 +50,7 @@ public Card CreateCushion(Currency currency)
 public decimal DefaultTransferAmount(decimal incomeAmount,string category)
     {
         var isSalary = category.Contains("Salary", StringComparison.OrdinalIgnoreCase);
-        if(incomeAmount < 10m)
+        if (incomeAmount < 10m)
         {
             if (isSalary) 
             {
