@@ -49,23 +49,17 @@ public CushionService(ICardRepository cardRepository)
 
 public decimal DefaultTransferAmount(decimal incomeAmount,string category)
     {
-        var isSalary = category.Contains("Salary", StringComparison.OrdinalIgnoreCase);
         if (incomeAmount < 10m)
         {
-            if (isSalary) 
-            {
-                return 1m;
-            }
             return 1m;
         }
-        else
+
+        var isSalary = category.Contains("Salary", StringComparison.OrdinalIgnoreCase);
+        if (isSalary)
         {
-            if (isSalary) 
-            {
-                return Floor2(incomeAmount * 0.20m);
-            }
-            return Floor2(incomeAmount * 0.10m);
+            return Floor2(incomeAmount * 0.20m);
         }
+        return Floor2(incomeAmount * 0.10m);
     }
 
 public static decimal Floor2(decimal value)
