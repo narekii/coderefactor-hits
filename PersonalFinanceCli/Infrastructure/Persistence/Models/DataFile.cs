@@ -18,7 +18,5 @@ namespace PersonalFinanceCli.Infrastructure.Persistence.Models
         public DateOnly? LastCushionDeclinedDate { get; set; }
 
         public bool HasSeenOnboarding { get; set; }
-
-        public Guid? DefaultCardId { get; set; }
     }
 }
