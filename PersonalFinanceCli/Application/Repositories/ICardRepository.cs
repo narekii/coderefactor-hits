@@ -10,8 +10,6 @@ public interface ICardRepository
 
     Card? GetDefault();
 
-    Card? GetDefaultByDataStore();
-
     Card? GetFirst();
 
     Card Add(Card card);
