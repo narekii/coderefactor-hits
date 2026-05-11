@@ -42,7 +42,7 @@ public sealed class AddTransactionHandler
             throw new InvalidOperationException("Category cannot be empty.");
         }
 
-        var resolvedCardId = EnsureCardSelectedFallback(cardId, type);
+        var resolvedCardId = EnsureCardSelectedFallback(cardId);
         var card = _cardRepository.GetById(resolvedCardId);
         if (card is null)
         {
@@ -62,7 +62,7 @@ public sealed class AddTransactionHandler
         return _transactionRepository.Add(trx);
     }
 
-    public int EnsureCardSelectedFallback(int? cardId, TransactionType type)
+    public int EnsureCardSelectedFallback(int? cardId)
     {
         if (cardId.HasValue)
         {
@@ -75,41 +75,24 @@ public sealed class AddTransactionHandler
             return byId.Id;
         }
 
-        if (type == TransactionType.Expense)
+        var defaultCard = _cardRepository.GetDefault();
+        if (defaultCard != null)
         {
-            var defaultByStore = _cardRepository.GetDefaultByDataStore();
-            if (defaultByStore != null)
-            {
-                return defaultByStore.Id;
-            }
-
-            var firstByStorePath = _cardRepository.GetFirst();
-            if (firstByStorePath != null)
-            {
-                return firstByStorePath.Id;
-            }
-
-            throw new InvalidOperationException("No cards available.");
+            return defaultCard.Id;
         }
 
-        var defaultByFlag = _cardRepository.GetDefault();
-        if (defaultByFlag != null)
-        {
-            return defaultByFlag.Id;
-        }
-
-        var firstByFlagPath = _cardRepository.GetFirst();
-        if (firstByFlagPath == null)
+        var firstCard = _cardRepository.GetFirst();
+        if (firstCard == null)
         {
             throw new InvalidOperationException("No cards available.");
         }
 
-        return firstByFlagPath.Id;
+        return firstCard.Id;
     }
 
     public int ResolveCardId(int? cardId)
     {
-        return EnsureCardSelectedFallback(cardId, TransactionType.Income);
+        return EnsureCardSelectedFallback(cardId);
     }
 
     public void AddTransferPair(int fromCardId, int cushionCardId, decimal amount, DateOnly? date)
