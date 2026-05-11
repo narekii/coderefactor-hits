@@ -436,105 +436,14 @@ public sealed class ConsoleUi
         }
     }
 
-    private bool AskYesNo(string prompt)
-    {
-        while (true)
-        {
-            _console.Write($"{prompt} ");
-            var raw = _console.ReadLine();
-            if (raw == null)
-            {
-                return false;
-            }
-
-            var value = raw.Trim();
-            if (value.Equals("y", StringComparison.OrdinalIgnoreCase) || value.Equals("yes", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (value.Equals("n", StringComparison.OrdinalIgnoreCase) || value.Equals("no", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            _console.WriteLine("Error: Please answer y/n.");
-        }
-    }
-
-    private bool AskYesNoDefaultYes(string prompt)
-    {
-        while (true)
-        {
-            _console.Write($"{prompt} ");
-            var raw = _console.ReadLine();
-            if (raw == null)
-            {
-                return false;
-            }
-
-            var value = raw.Trim();
-            if (value.Length == 0)
-            {
-                return true;
-            }
-
-            if (value.Equals("y", StringComparison.OrdinalIgnoreCase) || value.Equals("yes", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (value.Equals("n", StringComparison.OrdinalIgnoreCase) || value.Equals("no", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            _console.WriteLine("Error: Please answer y/n.");
-        }
-    }
-
-    private bool AskYesNoDefaultNo(string prompt)
-    {
-        while (true)
-        {
-            _console.Write($"{prompt} ");
-            var raw = _console.ReadLine();
-            if (raw == null)
-            {
-                return false;
-            }
-
-            var value = raw.Trim();
-            if (value.Length == 0)
-            {
-                return false;
-            }
-
-            if (value.Equals("y", StringComparison.OrdinalIgnoreCase) || value.Equals("yes", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (value.Equals("n", StringComparison.OrdinalIgnoreCase) || value.Equals("no", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            _console.WriteLine("Error: Please answer y/n.");
-        }
-    }
-
-    private bool AskYesNoWithCancel(string prompt, out bool canceled)
+    private bool AskYesNoCore(string prompt, bool? defaultIfEmpty, out bool canceled)
     {
         canceled = false;
         while (true)
         {
             _console.Write($"{prompt} ");
             var raw = _console.ReadLine();
-            if (raw == null)
-            {
-                return false;
-            }
+            if (raw == null) return false;
 
             var value = raw.Trim();
             if (value.Equals("cancel", StringComparison.OrdinalIgnoreCase))
@@ -545,15 +454,13 @@ public sealed class ConsoleUi
 
             if (value.Length == 0)
             {
-                return false;
+                if (defaultIfEmpty.HasValue) return defaultIfEmpty.Value;
             }
-
-            if (value.Equals("y", StringComparison.OrdinalIgnoreCase) || value.Equals("yes", StringComparison.OrdinalIgnoreCase))
+            else if (value.Equals("y", StringComparison.OrdinalIgnoreCase) || value.Equals("yes", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
-
-            if (value.Equals("n", StringComparison.OrdinalIgnoreCase) || value.Equals("no", StringComparison.OrdinalIgnoreCase))
+            else if (value.Equals("n", StringComparison.OrdinalIgnoreCase) || value.Equals("no", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
@@ -561,6 +468,11 @@ public sealed class ConsoleUi
             _console.WriteLine("Error: Please answer y/n.");
         }
     }
+
+    private bool AskYesNo(string prompt) => AskYesNoCore(prompt, null, out _);
+    private bool AskYesNoDefaultYes(string prompt) => AskYesNoCore(prompt, true, out _);
+    private bool AskYesNoDefaultNo(string prompt) => AskYesNoCore(prompt, false, out _);
+    private bool AskYesNoWithCancel(string prompt, out bool canceled) => AskYesNoCore(prompt, false, out canceled);
 
     private void ExecuteParsedCommand(ParsedCommand command)
     {
