@@ -60,16 +60,6 @@ public sealed class DailyReportService
         }
 
         var limit = _limitRepository.GetByDate(date);
-        var limitPercent = 0;
-        if (limit is { Amount: > 0 })
-        {
-            limitPercent = (int)((expense / limit.Amount) * 100m);
-        }
-
-        if (limitPercent < 0)
-        {
-            limitPercent = 0;
-        }
 
         var balances = new List<CardBalanceLine>();
         foreach (var card in cards)
