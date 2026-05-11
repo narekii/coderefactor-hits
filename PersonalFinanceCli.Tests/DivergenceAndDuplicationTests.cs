@@ -12,7 +12,6 @@ public sealed class DivergenceAndDuplicationTests
         var data = app.Store.Load();
         data.Cards.Single(c => c.Id == 1).IsDefault = true;
         data.Cards.Single(c => c.Id == 2).IsDefault = false;
-        data.DefaultCardId = CardIdToGuid(2);
         app.Store.Save(data);
 
         Assert.Equal(0, app.Run("expense", "add", "5", "Food"));
