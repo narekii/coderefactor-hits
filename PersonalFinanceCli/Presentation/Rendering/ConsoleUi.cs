@@ -1,6 +1,7 @@
 using PersonalFinanceCli.Application.CommandHandlers;
 using PersonalFinanceCli.Application.Repositories;
 using PersonalFinanceCli.Application.Services;
+using PersonalFinanceCli.Domain.DTOs;
 using PersonalFinanceCli.Domain.Services;
 using PersonalFinanceCli.Domain.ValueObjects;
 using PersonalFinanceCli.Infrastructure.Time;
@@ -138,9 +139,8 @@ public sealed class ConsoleUi
         _onboardingChecked = true;
 
         var hasSeen = _onboardingStateRepository.GetHasSeenOnboarding();
-        var cushion = _cushionService.FindCushionByName()
-            ?? _addTransactionHandler.FindCushionCardLoose()
-            ?? _cushionService.FindCushionByContains();
+        var cushion = _cushionService.GetCushion();
+
         if (cushion != null)
         {
             _onboardingStateRepository.SetLastCushionDeclinedDate(null);
@@ -349,9 +349,8 @@ public sealed class ConsoleUi
             return;
         }
 
-        var cushion = _cushionService.FindCushionByName()
-            ?? _addTransactionHandler.FindCushionCardLoose()
-            ?? _cushionService.FindCushionByContains();
+        var cushion = _cushionService.GetCushion();
+
 
         if (cushion == null)
         {
@@ -600,7 +599,8 @@ public sealed class ConsoleUi
                 ShowLimit();
                 break;
             case ReportDayCommand report:
-                _reportPrinter.PrintDayUsingRepositories(report.Date ?? _clock.Today);
+                var dailyReport = _dailyReportService.Generate(report.Date ?? _clock.Today);
+                _reportPrinter.Print(dailyReport);
                 break;
             default:
                 throw new InvalidOperationException("Unknown parsed command.");
