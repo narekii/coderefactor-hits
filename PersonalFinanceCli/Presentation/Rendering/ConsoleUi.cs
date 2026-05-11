@@ -1,10 +1,12 @@
 using PersonalFinanceCli.Application.CommandHandlers;
 using PersonalFinanceCli.Application.Repositories;
 using PersonalFinanceCli.Application.Services;
+using PersonalFinanceCli.Domain.DTOs;
 using PersonalFinanceCli.Domain.Services;
 using PersonalFinanceCli.Domain.ValueObjects;
 using PersonalFinanceCli.Infrastructure.Time;
 using PersonalFinanceCli.Presentation.Parsing;
+using PersonalFinanceCli.Presentation.Parsing.Commands;
 using System.Globalization;
 using System.Text.RegularExpressions;
 
@@ -137,9 +139,8 @@ public sealed class ConsoleUi
         _onboardingChecked = true;
 
         var hasSeen = _onboardingStateRepository.GetHasSeenOnboarding();
-        var cushion = _cushionService.FindCushionByName()
-            ?? _addTransactionHandler.FindCushionCardLoose()
-            ?? _cushionService.FindCushionByContains();
+        var cushion = _cushionService.GetCushion();
+
         if (cushion != null)
         {
             _onboardingStateRepository.SetLastCushionDeclinedDate(null);
@@ -191,13 +192,13 @@ public sealed class ConsoleUi
 
         if (root == "expense" && action == "add")
         {
-            HandleExpenseAddWizard(tokens);
+            HandleTransactionWizard(tokens, TransactionType.Expense);
             return true;
         }
 
         if (root == "income" && action == "add")
         {
-            HandleIncomeAddWizard(tokens);
+            HandleTransactionWizard(tokens, TransactionType.Income);
             return true;
         }
 
@@ -230,7 +231,7 @@ public sealed class ConsoleUi
         }
     }
 
-    private void HandleExpenseAddWizard(IReadOnlyList<string> tokens)
+    private void HandleTransactionWizard(IReadOnlyList<string> tokens, TransactionType type)
     {
         try
         {
@@ -256,65 +257,22 @@ public sealed class ConsoleUi
             var cardId = ResolveCardWizard(options.CardRaw, "Card? (enter to use default, id or name)");
             var date = options.Date ?? AskOptionalDate(null, "Date? (YYYY-MM-DD, enter = today)");
 
-            _addExpenseHandler.Handle(amount, category, cardId, date, options.Note);
+            if (type == TransactionType.Income)
+            {
+                var sourceCardId = _addTransactionHandler.ResolveCardId(cardId);
+                _addIncomeHandler.Handle(amount, category, sourceCardId, date, options.Note);
+                HandleOptionalCushionTransfer(amount, category, sourceCardId, date);
+            }
+            else
+            {
+                _addExpenseHandler.Handle(amount, category, cardId, date, options.Note);
+            }
 
             var dailyReport = _dailyReportService.Generate(_clock.Today);
             _reportPrinter.Print(dailyReport);
         }
-        catch (WizardCancelledException)
-        {
-            _console.WriteLine("Cancelled.");
-        }
-        catch (Exception ex)
-        {
-            _console.WriteLine($"Error: {ex.Message}");
-            _console.WriteLine("type help");
-        }
-    }
-
-    private void HandleIncomeAddWizard(IReadOnlyList<string> tokens)
-    {
-        try
-        {
-            var amount = AskRequiredDecimal(tokens.Count >= 3 ? tokens[2] : null, "Amount?");
-
-            var categoryToken = tokens.Count >= 4 ? tokens[3] : null;
-            var optionsIndex = 4;
-            if (categoryToken != null && categoryToken.StartsWith("--", StringComparison.Ordinal))
-            {
-                categoryToken = null;
-                optionsIndex = 3;
-            }
-
-            var options = _wizardOptionCollector.Collect(tokens, optionsIndex);
-            if (options.Error != null)
-            {
-                _console.WriteLine($"Error: {options.Error}");
-                _console.WriteLine("type help");
-                return;
-            }
-
-            var category = AskRequiredText(categoryToken, "Category?");
-            var cardId = ResolveCardWizard(options.CardRaw, "Card? (enter to use default, id or name)");
-            var date = options.Date ?? AskOptionalDate(null, "Date? (YYYY-MM-DD, enter = today)");
-
-            var sourceCardId = _addTransactionHandler.ResolveCardId(cardId);
-            _addIncomeHandler.Handle(amount, category, sourceCardId, date, options.Note);
-
-            HandleOptionalCushionTransfer(amount, category, sourceCardId, date);
-
-            var dailyReport = _dailyReportService.Generate(_clock.Today);
-            _reportPrinter.Print(dailyReport);
-        }
-        catch (WizardCancelledException)
-        {
-            _console.WriteLine("Cancelled.");
-        }
-        catch (Exception ex)
-        {
-            _console.WriteLine($"Error: {ex.Message}");
-            _console.WriteLine("type help");
-        }
+        catch (WizardCancelledException) { _console.WriteLine("Cancelled."); }
+        catch (Exception ex) { _console.WriteLine($"Error: {ex.Message}"); _console.WriteLine("type help"); }
     }
 
     private void HandleLimitSetWizard(IReadOnlyList<string> tokens)
@@ -348,9 +306,8 @@ public sealed class ConsoleUi
             return;
         }
 
-        var cushion = _cushionService.FindCushionByName()
-            ?? _addTransactionHandler.FindCushionCardLoose()
-            ?? _cushionService.FindCushionByContains();
+        var cushion = _cushionService.GetCushion();
+
 
         if (cushion == null)
         {
@@ -436,105 +393,14 @@ public sealed class ConsoleUi
         }
     }
 
-    private bool AskYesNo(string prompt)
-    {
-        while (true)
-        {
-            _console.Write($"{prompt} ");
-            var raw = _console.ReadLine();
-            if (raw == null)
-            {
-                return false;
-            }
-
-            var value = raw.Trim();
-            if (value.Equals("y", StringComparison.OrdinalIgnoreCase) || value.Equals("yes", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (value.Equals("n", StringComparison.OrdinalIgnoreCase) || value.Equals("no", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            _console.WriteLine("Error: Please answer y/n.");
-        }
-    }
-
-    private bool AskYesNoDefaultYes(string prompt)
-    {
-        while (true)
-        {
-            _console.Write($"{prompt} ");
-            var raw = _console.ReadLine();
-            if (raw == null)
-            {
-                return false;
-            }
-
-            var value = raw.Trim();
-            if (value.Length == 0)
-            {
-                return true;
-            }
-
-            if (value.Equals("y", StringComparison.OrdinalIgnoreCase) || value.Equals("yes", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (value.Equals("n", StringComparison.OrdinalIgnoreCase) || value.Equals("no", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            _console.WriteLine("Error: Please answer y/n.");
-        }
-    }
-
-    private bool AskYesNoDefaultNo(string prompt)
-    {
-        while (true)
-        {
-            _console.Write($"{prompt} ");
-            var raw = _console.ReadLine();
-            if (raw == null)
-            {
-                return false;
-            }
-
-            var value = raw.Trim();
-            if (value.Length == 0)
-            {
-                return false;
-            }
-
-            if (value.Equals("y", StringComparison.OrdinalIgnoreCase) || value.Equals("yes", StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            if (value.Equals("n", StringComparison.OrdinalIgnoreCase) || value.Equals("no", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            _console.WriteLine("Error: Please answer y/n.");
-        }
-    }
-
-    private bool AskYesNoWithCancel(string prompt, out bool canceled)
+    private bool AskYesNoCore(string prompt, bool? defaultIfEmpty, out bool canceled)
     {
         canceled = false;
         while (true)
         {
             _console.Write($"{prompt} ");
             var raw = _console.ReadLine();
-            if (raw == null)
-            {
-                return false;
-            }
+            if (raw == null) return false;
 
             var value = raw.Trim();
             if (value.Equals("cancel", StringComparison.OrdinalIgnoreCase))
@@ -545,15 +411,13 @@ public sealed class ConsoleUi
 
             if (value.Length == 0)
             {
-                return false;
+                if (defaultIfEmpty.HasValue) return defaultIfEmpty.Value;
             }
-
-            if (value.Equals("y", StringComparison.OrdinalIgnoreCase) || value.Equals("yes", StringComparison.OrdinalIgnoreCase))
+            else if (value.Equals("y", StringComparison.OrdinalIgnoreCase) || value.Equals("yes", StringComparison.OrdinalIgnoreCase))
             {
                 return true;
             }
-
-            if (value.Equals("n", StringComparison.OrdinalIgnoreCase) || value.Equals("no", StringComparison.OrdinalIgnoreCase))
+            else if (value.Equals("n", StringComparison.OrdinalIgnoreCase) || value.Equals("no", StringComparison.OrdinalIgnoreCase))
             {
                 return false;
             }
@@ -561,6 +425,11 @@ public sealed class ConsoleUi
             _console.WriteLine("Error: Please answer y/n.");
         }
     }
+
+    private bool AskYesNo(string prompt) => AskYesNoCore(prompt, null, out _);
+    private bool AskYesNoDefaultYes(string prompt) => AskYesNoCore(prompt, true, out _);
+    private bool AskYesNoDefaultNo(string prompt) => AskYesNoCore(prompt, false, out _);
+    private bool AskYesNoWithCancel(string prompt, out bool canceled) => AskYesNoCore(prompt, false, out canceled);
 
     private void ExecuteParsedCommand(ParsedCommand command)
     {
@@ -599,7 +468,8 @@ public sealed class ConsoleUi
                 ShowLimit();
                 break;
             case ReportDayCommand report:
-                _reportPrinter.PrintDayUsingRepositories(report.Date ?? _clock.Today);
+                var dailyReport = _dailyReportService.Generate(report.Date ?? _clock.Today);
+                _reportPrinter.Print(dailyReport);
                 break;
             default:
                 throw new InvalidOperationException("Unknown parsed command.");
@@ -661,7 +531,7 @@ public sealed class ConsoleUi
         _console.WriteLine($"Limit: {limit.Amount:F2} {currency} ({today:yyyy-MM-dd})");
     }
 
-    private string AskRequiredText(string? seed, string prompt)
+    private T Ask<T>(string? seed, string prompt, Func<string, (bool Success, T Value)> parser, string errorMessage)
     {
         var current = seed;
         while (true)
@@ -677,182 +547,69 @@ public sealed class ConsoleUi
                 throw new WizardCancelledException();
             }
 
-            if (!string.IsNullOrWhiteSpace(current))
-            {
-                return current;
-            }
-
-            _console.WriteLine("Error: Value is required.");
-            current = null;
-        }
-    }
-
-    private decimal AskRequiredDecimal(string? seed, string prompt)
-    {
-        var current = seed;
-        while (true)
-        {
-            if (current == null)
-            {
-                _console.Write($"{prompt} ");
-                current = ReadWizardAnswer();
-            }
-
-            if (string.Equals(current, "cancel", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new WizardCancelledException();
-            }
-
-            if (TryParseFlexibleDecimal(current, out var value))
+            var (success, value) = parser(current);
+            if (success)
             {
                 return value;
             }
 
-            _console.WriteLine("Error: Invalid decimal.");
+            _console.WriteLine($"Error: {errorMessage}");
             current = null;
         }
     }
 
-    private decimal? AskOptionalDecimal(string? seed, string prompt)
-    {
-        var current = seed;
-        while (true)
+    private string AskRequiredText(string? seed, string prompt) =>
+        Ask(seed, prompt, raw =>
+            !string.IsNullOrWhiteSpace(raw) ? (true, raw) : (false, string.Empty),
+            "Value is required.");
+
+    private decimal AskRequiredDecimal(string? seed, string prompt) =>
+        Ask(seed, prompt, raw =>
+            TryParseFlexibleDecimal(raw, out var val) ? (true, val) : (false, 0m),
+            "Invalid decimal.");
+
+    private decimal? AskOptionalDecimal(string? seed, string prompt) =>
+        Ask(seed, prompt, raw =>
         {
-            if (current == null)
-            {
-                _console.Write($"{prompt} ");
-                current = ReadWizardAnswer();
-            }
+            if (string.IsNullOrWhiteSpace(raw)) return (true, (decimal?)null);
+            if (TryParseFlexibleDecimal(raw, out var val)) return (true, val);
+            return (false, null);
+        }, "Invalid decimal.");
 
-            if (string.Equals(current, "cancel", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new WizardCancelledException();
-            }
-
-            if (string.IsNullOrWhiteSpace(current))
-            {
-                return null;
-            }
-
-            if (TryParseFlexibleDecimal(current, out var value))
-            {
-                return value;
-            }
-
-            _console.WriteLine("Error: Invalid decimal.");
-            current = null;
-        }
-    }
-
-    private DateOnly? AskOptionalDate(string? seed, string prompt)
-    {
-        var current = seed;
-        while (true)
+    private DateOnly? AskOptionalDate(string? seed, string prompt) =>
+        Ask(seed, prompt, raw =>
         {
-            if (current == null)
-            {
-                _console.Write($"{prompt} ");
-                current = ReadWizardAnswer();
-            }
+            if (string.IsNullOrWhiteSpace(raw)) return (true, (DateOnly?)null);
+            if (DateOnly.TryParse(raw, out var val)) return (true, val);
+            return (false, null);
+        }, "Invalid date.");
 
-            if (string.Equals(current, "cancel", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new WizardCancelledException();
-            }
+    private string AskCurrency(string? seed) =>
+        Ask(seed, "Currency (RUB/EUR)? ", raw =>
+            Enum.TryParse<Currency>(raw, true, out _) ? (true, raw) : (false, string.Empty),
+            "Unknown currency. Allowed: RUB, EUR.");
 
-            if (string.IsNullOrWhiteSpace(current))
-            {
-                return null;
-            }
-
-            if (DateOnly.TryParse(current, out var value))
-            {
-                return value;
-            }
-
-            _console.WriteLine("Error: Invalid date.");
-            current = null;
-        }
-    }
-
-    private int? ResolveCardWizard(string? seed, string prompt)
-    {
-        var current = seed;
-        while (true)
+    private int? ResolveCardWizard(string? seed, string prompt) =>
+        Ask(seed, prompt, raw =>
         {
-            if (current == null)
-            {
-                _console.Write($"{prompt} ");
-                current = ReadWizardAnswer();
-            }
+            if (string.IsNullOrWhiteSpace(raw)) return (true, (int?)null);
+            if (int.TryParse(raw.Trim(), out var parsed)) return (true, parsed);
 
-            if (string.Equals(current, "cancel", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new WizardCancelledException();
-            }
-
-            if (string.IsNullOrWhiteSpace(current))
-            {
-                return null;
-            }
-
-            if (int.TryParse(current.Trim(), out var parsed))
-            {
-                return parsed;
-            }
-
-            if (Regex.IsMatch(current, "^[0-9a-fA-F-]{36}$") && Guid.TryParse(current, out var guid))
+            if (Regex.IsMatch(raw, "^[0-9a-fA-F-]{36}$") && Guid.TryParse(raw, out var guid))
             {
                 var tail = guid.ToString("N")[20..];
-                if (int.TryParse(tail, out var fromGuid))
-                {
-                    return fromGuid;
-                }
+                if (int.TryParse(tail, out var fromGuid)) return (true, fromGuid);
             }
 
             var cards = _cardRepository.GetAll();
-            var byExact = cards.FirstOrDefault(c => c.Name.Equals(current.Trim(), StringComparison.OrdinalIgnoreCase));
-            if (byExact != null)
-            {
-                return byExact.Id;
-            }
+            var byExact = cards.FirstOrDefault(c => c.Name.Equals(raw.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (byExact != null) return (true, byExact.Id);
 
-            var byContains = cards.Where(c => c.Name.Contains(current, StringComparison.OrdinalIgnoreCase)).ToList();
-            if (byContains.Count == 1)
-            {
-                return byContains[0].Id;
-            }
+            var byContains = cards.Where(c => c.Name.Contains(raw, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (byContains.Count == 1) return (true, byContains[0].Id);
 
-            _console.WriteLine("Error: Invalid card. Enter card id or card name.");
-            current = null;
-        }
-    }
-
-    private string AskCurrency(string? seed)
-    {
-        var current = seed;
-        while (true)
-        {
-            if (current == null)
-            {
-                _console.Write("Currency (RUB/EUR)? ");
-                current = ReadWizardAnswer();
-            }
-
-            if (string.Equals(current, "cancel", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new WizardCancelledException();
-            }
-
-            if (Enum.TryParse<Currency>(current, true, out _))
-            {
-                return current;
-            }
-
-            _console.WriteLine("Error: Unknown currency. Allowed: RUB, EUR.");
-            current = null;
-        }
-    }
+            return (false, null);
+        }, "Invalid card. Enter card id or card name.");
 
     private string ReadWizardAnswer()
     {

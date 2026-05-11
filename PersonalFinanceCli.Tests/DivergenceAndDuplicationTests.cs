@@ -12,7 +12,6 @@ public sealed class DivergenceAndDuplicationTests
         var data = app.Store.Load();
         data.Cards.Single(c => c.Id == 1).IsDefault = true;
         data.Cards.Single(c => c.Id == 2).IsDefault = false;
-        data.DefaultCardId = CardIdToGuid(2);
         app.Store.Save(data);
 
         Assert.Equal(0, app.Run("expense", "add", "5", "Food"));
@@ -56,7 +55,7 @@ public sealed class DivergenceAndDuplicationTests
     {
         var parser = new PersonalFinanceCli.Presentation.Parsing.CommandParser();
         var cmd = parser.Parse("income add 1 Salary --date 2026-3-3 --note plain");
-        var parsed = Assert.IsType<PersonalFinanceCli.Presentation.Parsing.TransactionAddCommand>(cmd);
+        var parsed = Assert.IsType<PersonalFinanceCli.Presentation.Parsing.Commands.TransactionAddCommand>(cmd);
         Assert.Equal(new DateOnly(2026, 3, 3), parsed.Date);
         Assert.Equal("plain", parsed.Note);
 

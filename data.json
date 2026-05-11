@@ -1,0 +1,68 @@
+{
+  "cards": [
+    {
+      "id": 1,
+      "name": "Financial cushion",
+      "currency": 1,
+      "initialBalance": 0,
+      "isDefault": false,
+      "isCushion": true
+    },
+    {
+      "id": 2,
+      "name": "Tinkoff",
+      "currency": 1,
+      "initialBalance": 1000,
+      "isDefault": true,
+      "isCushion": false
+    },
+    {
+      "id": 3,
+      "name": "Cash",
+      "currency": 1,
+      "initialBalance": 200,
+      "isDefault": false,
+      "isCushion": false
+    }
+  ],
+  "transactions": [
+    {
+      "id": 1,
+      "cardId": 2,
+      "amount": 1500,
+      "category": "Salary",
+      "date": "2026-05-04",
+      "note": null,
+      "type": 1
+    },
+    {
+      "id": 2,
+      "cardId": 2,
+      "amount": 12.5,
+      "category": "Food",
+      "date": "2026-05-04",
+      "note": "Lunch",
+      "type": 2
+    },
+    {
+      "id": 3,
+      "cardId": 2,
+      "amount": 3.4,
+      "category": "Coffee",
+      "date": "2026-03-01",
+      "note": null,
+      "type": 2
+    }
+  ],
+  "dailyLimits": [
+    {
+      "id": 1,
+      "date": "2026-05-04",
+      "amount": 1000,
+      "currency": 1
+    }
+  ],
+  "lastCushionDeclinedDate": null,
+  "hasSeenOnboarding": true,
+  "defaultCardId": "00000000-0000-0000-0000-000000000002"
+}
