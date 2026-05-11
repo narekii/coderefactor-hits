@@ -20,7 +20,7 @@ public sealed class ReportPrinter
         _writer.WriteLine($"Income: {FormatMoney(report.Income, report.Currency)}");
         _writer.WriteLine($"Expense: {FormatMoney(report.Expense, report.Currency)}");
 
-        PrintLimitWithFloorPercent(report.Expense, report.Limit?.Amount, report.Limit?.Currency ?? report.Currency);
+        PrintLimit(report.Expense, report.Limit?.Amount, report.Limit?.Currency ?? report.Currency);
 
         _writer.WriteLine("By category:");
         foreach (var pair in report.CategoryExpenses.OrderBy(x => x.Key, StringComparer.Ordinal))
@@ -38,58 +38,16 @@ public sealed class ReportPrinter
 
     private void PrintLimit(decimal expense, decimal? limit, Currency currency)
     {
-        if (limit.HasValue)
+        if (limit.HasValue && limit.Value > 0)
         {
-            if (limit.Value <= 0)
-            {
-                _writer.WriteLine("Limit: (not set)");
-                return;
-            }
-
-            var percent = limit.Value == 0m ? 0 : (int)Math.Round((expense / limit.Value) * 100m, MidpointRounding.AwayFromZero);
-            _writer.WriteLine($"Limit: {limit.Value:F2} {currency} ({percent}%)");
-            return;
-        }
-
-        _writer.WriteLine("Limit: (not set)");
-    }
-
-    private void PrintLimitWithFloorPercent(decimal expense, decimal? limit, Currency currency)
-    {
-        if (limit.HasValue)
-        {
-            if (limit.Value <= 0)
-            {
-                _writer.WriteLine("Limit: (not set)");
-                return;
-            }
-
             var percent = (int)Math.Floor((expense / limit.Value) * 100m);
             _writer.WriteLine($"Limit: {FormatMoney(limit.Value, currency)} ({percent}%)");
-            return;
         }
-
-        _writer.WriteLine("Limit: (not set)");
-    }
-
-    private void PrintLimitWithRoundPercent(decimal expense, decimal? limit, Currency currency)
-    {
-        if (limit.HasValue)
+        else
         {
-            if (limit.Value <= 0)
-            {
-                _writer.WriteLine("Limit: (not set)");
-                return;
-            }
-
-            var percent = limit.Value == 0m ? 0 : (int)Math.Round((expense / limit.Value) * 100m, MidpointRounding.AwayFromZero);
-            _writer.WriteLine($"Limit: {limit.Value:F2} {currency} ({percent}%)");
-            return;
+            _writer.WriteLine("Limit: (not set)");
         }
-
-        _writer.WriteLine("Limit: (not set)");
     }
-
 
     public static string FormatMoney(decimal amount, Currency currency)
     {
