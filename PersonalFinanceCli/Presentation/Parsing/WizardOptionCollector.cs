@@ -1,11 +1,7 @@
-using System.Text.RegularExpressions;
-
 namespace PersonalFinanceCli.Presentation.Parsing;
 
 public sealed class WizardOptionCollector
 {
-    private static readonly Regex StrictDateRegex = new(@"^\d{4}-\d{2}-\d{2}$", RegexOptions.Compiled);
-
     public WizardOptions Collect(IReadOnlyList<string> tokens, int startIndex)
     {
         string? cardRaw = null;
@@ -28,10 +24,9 @@ public sealed class WizardOptionCollector
             else if (option == "--date")
             {
                 i++;
-                var rawDate = i < tokens.Count ? tokens[i] : null;
-                if (string.IsNullOrWhiteSpace(rawDate) || !StrictDateRegex.IsMatch(rawDate) || !DateOnly.TryParse(rawDate, out var parsedDate))
+                if (i >= tokens.Count || !DateOnly.TryParse(tokens[i], out var parsedDate))
                 {
-                    return new WizardOptions(null, null, null, "Invalid --date value. Use strict YYYY-MM-DD.");
+                    return new WizardOptions(null, null, null, "Invalid --date value. Use YYYY-MM-DD.");
                 }
 
                 date = parsedDate;
@@ -44,13 +39,7 @@ public sealed class WizardOptionCollector
                     return new WizardOptions(null, null, null, "Invalid --note value.");
                 }
 
-                var rawNote = tokens[i];
-                if (!rawNote.Contains(' '))
-                {
-                    return new WizardOptions(null, null, null, "Wizard requires quoted note for --note.");
-                }
-
-                note = rawNote;
+                note = tokens[i];
             }
             else
             {

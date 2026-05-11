@@ -125,71 +125,32 @@ public sealed class CommandParser
             throw new InvalidOperationException("Category cannot be empty.");
         }
 
-        var options = ParseTransactionOptions(tokens, 4);
+        var collector = new WizardOptionCollector();
+        var options = collector.Collect(tokens, 4);
+
+        if (options.Error != null)
+        {
+            throw new InvalidOperationException(options.Error);
+        }
+
+        int? cardId = null;
+        if (options.CardRaw != null)
+        {
+            var parsedCardId = ResolveCardFromArgs(options.CardRaw);
+            if (!parsedCardId.HasValue)
+            {
+                throw new InvalidOperationException("Invalid --card value.");
+            }
+            cardId = parsedCardId;
+        }
+
         return new TransactionAddCommand(
             type,
             amount,
             category,
-            options.CardId,
+            cardId,
             options.Date,
             options.Note);
-    }
-
-    private static (int? CardId, DateOnly? Date, string? Note) ParseTransactionOptions(IReadOnlyList<string> tokens, int startIndex)
-    {
-        int? cardId = null;
-        DateOnly? date = null;
-        string? note = null;
-
-        var i = startIndex;
-        while (i < tokens.Count)
-        {
-            var option = tokens[i];
-            if (option == "--card")
-            {
-                i++;
-                if (i >= tokens.Count)
-                {
-                    throw new InvalidOperationException("Invalid --card value.");
-                }
-
-                var parsedCardId = ResolveCardFromArgs(tokens[i]);
-                if (!parsedCardId.HasValue)
-                {
-                    throw new InvalidOperationException("Invalid --card value.");
-                }
-
-                cardId = parsedCardId;
-            }
-            else if (option == "--date")
-            {
-                i++;
-                if (i >= tokens.Count || !DateOnly.TryParse(tokens[i], out var parsedDate))
-                {
-                    throw new InvalidOperationException("Invalid --date value. Use YYYY-MM-DD.");
-                }
-
-                date = parsedDate;
-            }
-            else if (option == "--note")
-            {
-                i++;
-                if (i >= tokens.Count)
-                {
-                    throw new InvalidOperationException("Invalid --note value.");
-                }
-
-                note = tokens[i];
-            }
-            else
-            {
-                throw new InvalidOperationException($"Unknown option {option}.");
-            }
-
-            i++;
-        }
-
-        return (cardId, date, note);
     }
 
     public static int? ResolveCardFromArgs(string raw)
