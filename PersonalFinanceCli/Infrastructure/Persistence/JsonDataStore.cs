@@ -21,28 +21,13 @@ public sealed class JsonDataStore
 
     public DataFile Load()
     {
-        if (!File.Exists(_filePath))
-        {
-            var empty = new DataFile();
-            Save(empty);
-            return empty;
-        }
+        if (!File.Exists(_filePath)) return CreateEmpty();
 
         var json = File.ReadAllText(_filePath);
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            var empty = new DataFile();
-            Save(empty);
-            return empty;
-        }
+        if (string.IsNullOrWhiteSpace(json)) return CreateEmpty();
 
         var result = JsonSerializer.Deserialize<DataFile>(json, _options);
-        if (result == null)
-        {
-            var empty = new DataFile();
-            Save(empty);
-            return empty;
-        }
+        if (result == null) return CreateEmpty();
 
         result.Cards ??= new List<Card>();
         result.Transactions ??= new List<Transaction>();
@@ -50,8 +35,14 @@ public sealed class JsonDataStore
 
         return result;
     }
+    private DataFile CreateEmpty()
+    {
+        var empty = new DataFile();
+        Save(empty);
+        return empty;
+    }
 
-    public void Save(DataFile data)
+public void Save(DataFile data)
     {
         var dir = Path.GetDirectoryName(_filePath);
         if (!string.IsNullOrWhiteSpace(dir))
