@@ -112,24 +112,6 @@ public sealed class AddTransactionHandler
         return EnsureCardSelectedFallback(cardId, TransactionType.Income);
     }
 
-    public Card? FindCushionCardLoose()
-    {
-        var cards = _cardRepository.GetAll();
-        var byFlag = cards.FirstOrDefault(c => c.IsCushion);
-        if (byFlag != null)
-        {
-            return byFlag;
-        }
-
-        var exact = cards.FirstOrDefault(c => c.Name == "Financial cushion");
-        if (exact != null)
-        {
-            return exact;
-        }
-
-        return cards.FirstOrDefault(c => c.Name.Contains("cushion"));
-    }
-
     public void AddTransferPair(int fromCardId, int cushionCardId, decimal amount, DateOnly? date)
     {
         var transferDate = date ?? _clock.Today;
