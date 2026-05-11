@@ -192,13 +192,13 @@ public sealed class ConsoleUi
 
         if (root == "expense" && action == "add")
         {
-            HandleExpenseAddWizard(tokens);
+            HandleTransactionWizard(tokens, TransactionType.Expense);
             return true;
         }
 
         if (root == "income" && action == "add")
         {
-            HandleIncomeAddWizard(tokens);
+            HandleTransactionWizard(tokens, TransactionType.Expense);
             return true;
         }
 
@@ -231,7 +231,7 @@ public sealed class ConsoleUi
         }
     }
 
-    private void HandleExpenseAddWizard(IReadOnlyList<string> tokens)
+    private void HandleTransactionWizard(IReadOnlyList<string> tokens, TransactionType type)
     {
         try
         {
@@ -257,65 +257,22 @@ public sealed class ConsoleUi
             var cardId = ResolveCardWizard(options.CardRaw, "Card? (enter to use default, id or name)");
             var date = options.Date ?? AskOptionalDate(null, "Date? (YYYY-MM-DD, enter = today)");
 
-            _addExpenseHandler.Handle(amount, category, cardId, date, options.Note);
+            if (type == TransactionType.Income)
+            {
+                var sourceCardId = _addTransactionHandler.ResolveCardId(cardId);
+                _addIncomeHandler.Handle(amount, category, sourceCardId, date, options.Note);
+                HandleOptionalCushionTransfer(amount, category, sourceCardId, date);
+            }
+            else
+            {
+                _addExpenseHandler.Handle(amount, category, cardId, date, options.Note);
+            }
 
             var dailyReport = _dailyReportService.Generate(_clock.Today);
             _reportPrinter.Print(dailyReport);
         }
-        catch (WizardCancelledException)
-        {
-            _console.WriteLine("Cancelled.");
-        }
-        catch (Exception ex)
-        {
-            _console.WriteLine($"Error: {ex.Message}");
-            _console.WriteLine("type help");
-        }
-    }
-
-    private void HandleIncomeAddWizard(IReadOnlyList<string> tokens)
-    {
-        try
-        {
-            var amount = AskRequiredDecimal(tokens.Count >= 3 ? tokens[2] : null, "Amount?");
-
-            var categoryToken = tokens.Count >= 4 ? tokens[3] : null;
-            var optionsIndex = 4;
-            if (categoryToken != null && categoryToken.StartsWith("--", StringComparison.Ordinal))
-            {
-                categoryToken = null;
-                optionsIndex = 3;
-            }
-
-            var options = _wizardOptionCollector.Collect(tokens, optionsIndex);
-            if (options.Error != null)
-            {
-                _console.WriteLine($"Error: {options.Error}");
-                _console.WriteLine("type help");
-                return;
-            }
-
-            var category = AskRequiredText(categoryToken, "Category?");
-            var cardId = ResolveCardWizard(options.CardRaw, "Card? (enter to use default, id or name)");
-            var date = options.Date ?? AskOptionalDate(null, "Date? (YYYY-MM-DD, enter = today)");
-
-            var sourceCardId = _addTransactionHandler.ResolveCardId(cardId);
-            _addIncomeHandler.Handle(amount, category, sourceCardId, date, options.Note);
-
-            HandleOptionalCushionTransfer(amount, category, sourceCardId, date);
-
-            var dailyReport = _dailyReportService.Generate(_clock.Today);
-            _reportPrinter.Print(dailyReport);
-        }
-        catch (WizardCancelledException)
-        {
-            _console.WriteLine("Cancelled.");
-        }
-        catch (Exception ex)
-        {
-            _console.WriteLine($"Error: {ex.Message}");
-            _console.WriteLine("type help");
-        }
+        catch (WizardCancelledException) { _console.WriteLine("Cancelled."); }
+        catch (Exception ex) { _console.WriteLine($"Error: {ex.Message}"); _console.WriteLine("type help"); }
     }
 
     private void HandleLimitSetWizard(IReadOnlyList<string> tokens)
